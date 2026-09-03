@@ -13,8 +13,8 @@
 // ============ 机械参数(两组底盘)定义 ============
 #define WHEEL_RADIUS_MM      37.5f    // 轮子半径 (mm)  37.5 
 #define PI                   3.1415926f
-#define a                    107      //半轴距 125  107
-#define b                    107      //半轮距 102  107
+#define a                    125      //半轴距 125  107
+#define b                    102      //半轮距 102  107
 #define REDUCE_RADIO         19       //减速比
 // 轮子周长 (mm)
 #define WHEEL_CIRCUMFERENCE  (2.0f * PI * WHEEL_RADIUS_MM)  // ≈ 235.5 mm
@@ -40,12 +40,13 @@ extern float tgt_unwrap;                      // 展开坐标系中的 yaw 目�
 void Chassis_Motor_Init(void);
 
 /* ---------- 实际用的函数 ---------- */
-void Chassis_Position_Control(float body_x, float body_y, float v_x_ff, float v_y_ff);  // 车体以自身坐标系向(x,y)移动,内部集成IMU纠偏
-void Chassis_Move_yaw(float yaw);                           // 车体系yaw方向旋转到固定角度
-void Chassis_Speed_Control(float v_x, float v_y);           // 车体中心以(vx,vy)平移
-void Chassis_Speed_yaw(float dps);                          // 绕z轴旋转，参数单位：度/秒
-void Chassis_Motor_Stop(void);           // 停止
-void Chassis_ResetYawHold(void);   // <<< 新增：换段/新目标时重置 IMU 锁存
+void Chassis_UpdateUnwrap(void);                                            // 每拍调用：更新 yaw 展开角(展开+锁存)
+void Chassis_Position_Control(float body_x, float body_y, float hold_yaw);  // 车体以自身坐标系向(x,y)移动,车的航向角为hold_yaw度,内部集成IMU纠偏
+void Chassis_Move_yaw(float yaw);                                           // 车体系yaw方向旋转到固定角度
+void Chassis_Speed_Control(float v_x, float v_y, float w);                  // 车体中心以(vx,vy)平移
+void Chassis_Speed_yaw(float dps);                                          // 绕z轴旋转，参数单位：度/秒
+void Chassis_Motor_Stop(void);                                              // 停止
+void Chassis_ResetYawHold(void);                                            // <<< 新增：换段/新目标时重置 IMU 锁存
 
 /* ---------- 调试时调用进行测试 ---------- */
 void Chassis_Move_x(float x);   // 车体系x方向移动固定距离

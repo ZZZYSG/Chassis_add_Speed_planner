@@ -38,7 +38,7 @@ void Odometer_ResetSegment(void)
    /* 调用周期建议 ≤ 50ms(全速下半圈约 64ms, 跨圈修正才有效) */
 void Odometer_Update(void)
 {
-    int   i;
+    volatile int   i;
     float d[4];
     for (i = 0; i < 4; i++)
     {
@@ -73,12 +73,12 @@ void Odometer_Update(void)
     odometer.body_odom_x += body_dx;
     odometer.body_odom_y += body_dy;
 
-    /* 3. 场地系航向角(度 -> 弧度) 
+    /* 3. 场地系航向角(度 -> 弧度) */
     odometer.theta = final_yaw * PI / 180.0f;
 
-     4. 车体系 -> 场地系旋转并累加位置 
+    /* 4. 车体系 -> 场地系旋转并累加位置 */
     float cos_t = cosf(odometer.theta);
     float sin_t = sinf(odometer.theta);
     odometer.x += body_dx * cos_t - body_dy * sin_t;
-    odometer.y += body_dx * sin_t + body_dy * cos_t; */
+    odometer.y += body_dx * sin_t + body_dy * cos_t; 
 }

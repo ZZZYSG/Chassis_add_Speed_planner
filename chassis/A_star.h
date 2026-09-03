@@ -6,9 +6,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define MAP_X  3
-#define MAP_Y  3
-#define NODES  (MAP_X * MAP_Y)  // 9个节点
+#define MAP_X  3      
+#define MAP_Y  3      
+#define NODES  (MAP_X * MAP_Y)  //9个节点
 
 /* ===== 变量定义在 A_star.c,这里只做声明 =====
  * (原来定义在头文件里: 无 static 的会重复定义,
