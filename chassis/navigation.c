@@ -3,7 +3,6 @@
 #define PI  3.1415926f
 
 /* 导航层全局状态(仅本文件可见),所有函数共享这一个实例 */
-extern float final_yaw;
 extern float pos_hold_yaw;
 extern uint8_t route_step_mark;
 extern uint8_t task_step_mark;
@@ -11,7 +10,6 @@ static Navigation_t nav;
 /* ==================== 3×3 拓扑节点 -> 世界坐标 (mm) ====================
  * 表编号 1~9 = 代码索引 0~8(排序规则: 先比 Y 小, 再比 X 小):
  *   编号 |  X   |  Y  | (X, Y)
-      0   | 125  | 102  | (125, 102)
  *    1   | 275  | 350  | (275,  350)
  *    2   | 1200 | 350  | (1200, 350)
  *    3   | 2050 | 350  | (2050, 350)
@@ -19,7 +17,7 @@ static Navigation_t nav;
  *    5   | 1200 | 1200 | (1200,1200)
  *    6   | 2050 | 1200 | (2050,1200)
  *    7   | 275  | 2080 | (275, 2080)
- *    8   | 1200 | 2080 | (1200,2080)s
+ *    8   | 1200 | 2080 | (1200,2080)
  *    9   | 2050 | 2080 | (2050,2080)
  * 格距不相等(X: 850/880, Y: 925/850),所以查表,不用统一格长
  */
@@ -27,13 +25,11 @@ static const float NODE_X[NODES] = {
     275.0f, 1200.0f, 2050.0f,     /* 第 0 行 */
     275.0f, 1200.0f, 2050.0f,     /* 第 1 行 */
     275.0f, 1200.0f, 2050.0f      /* 第 2 行 */
-    // 125.0f,                       /* 起始点 */
 };
 static const float NODE_Y[NODES] = {
     350.0f,  350.0f,  350.0f,     /* 第 0 行 */
     1200.0f, 1200.0f, 1200.0f,    /* 第 1 行 */
     2080.0f, 2080.0f, 2080.0f     /* 第 2 行 */
-    // 102.0f,                       /* 起始点 */
 };
 
 
@@ -79,6 +75,57 @@ void Nav_Init(void)
     memset(&nav, 0, sizeof(nav));
 }
 
+/* 根据出发航向判断从哪个启停区出发:
+ * ≈INIT_YAW1(0°)    -> 从节点 0 进场
+ * ≈INIT_YAW2(180°)  -> 从节点 6 进场 */
+uint8_t Nav_DetectStartNode(void)
+{
+    float yaw = JYIMU_GetYaw();
+    float d1 = yaw - INIT_YAW1;
+    float d2 = yaw - INIT_YAW2;
+
+    d1 += (d1 > 180.0f) ? -360.0f : (d1 < -180.0f) ? 360.0f : 0.0f;
+    d2 += (d2 > 180.0f) ? -360.0f : (d2 < -180.0f) ? 360.0f : 0.0f;
+
+    if (fabsf(d1) <= YAW_MATCH_TOL) return 6;
+    if (fabsf(d2) <= YAW_MATCH_TOL) return 0;
+    return 0xFF;
+}
+
+uint8_t Nav_Start_From_Origin(uint8_t first_node)
+{
+    static uint8_t odo_inited = 0;
+    if (first_node >= NODES) return 0;
+    else if (first_node == 0xFF) return 0;
+    else if (first_node == 0 && !odo_inited)
+    {
+        odometer.x = 125.0f;  odometer.y = 102.0f; 
+        odo_inited = 1;
+    }
+    else if (first_node == 6 && !odo_inited)
+    {
+        odometer.x = 125.0f; odometer.y = 2298.0f; 
+        odo_inited = 1;
+    }
+
+    if(first_node == 0)
+    Chassis_Position_Control(NODE_X[first_node]-odometer.x, NODE_Y[first_node] - odometer.y, pos_hold_yaw);
+    else if(first_node == 6)
+    Chassis_Position_Control(odometer.x - NODE_X[first_node], odometer.y - NODE_Y[first_node], pos_hold_yaw);
+
+    float ox = NODE_X[first_node] - odometer.x;
+    float oy = NODE_Y[first_node] - odometer.y;
+    if (sqrtf(ox * ox + oy * oy) < 10.0f) 
+    {
+        Chassis_Motor_Stop();
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 
 uint8_t Nav_Start(uint8_t start, uint8_t goal)
 {
@@ -112,7 +159,7 @@ uint8_t Nav_Start(uint8_t start, uint8_t goal)
 
 
 
-/* 每个控制周期调用一次,内部直接读里程计 odometer 和 IMU 的 final_yaw */
+/* 每个控制周期调用一次,内部直接读里程计 odometer 和 IMU 的 yaw_final */
 void Nav_Update(void)
 {
     if (!nav.running) return;                               //还没有导航信息

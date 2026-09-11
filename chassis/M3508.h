@@ -8,7 +8,7 @@
 #include "bsp_can.h"        // 需要包含 bsp_can.h     以使用 CAN 功能
 #include "imu.h"            // 需要包含 imu.h         以用于读取场地系角度
 #include "odometer.h"       // 需要包含 odometer.h    以识别 Odometer 类型
-#include "speed_planner.h"
+
 
 // ============ 机械参数(两组底盘)定义 ============
 #define WHEEL_RADIUS_MM      37.5f    // 轮子半径 (mm)  37.5 

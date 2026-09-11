@@ -67,4 +67,3 @@ float JYIMU_GetYaw(void)
 {
     return jyimu_yaw;
 }
-

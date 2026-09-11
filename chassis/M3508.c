@@ -246,7 +246,7 @@ void Chassis_Motor_Stop(void)
 void Chassis_ResetYawHold(void)
 {
     Chassis_UpdateUnwrap();
-    pos_hold_yaw         = unwrap_yaw;
+    pos_hold_yaw = unwrap_yaw;
     pos_motor_pid[2].iout = 0.0f;
 }
 
