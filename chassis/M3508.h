@@ -8,7 +8,7 @@
 #include "bsp_can.h"        // 需要包含 bsp_can.h     以使用 CAN 功能
 #include "imu.h"            // 需要包含 imu.h         以用于读取场地系角度
 #include "odometer.h"       // 需要包含 odometer.h    以识别 Odometer 类型
-
+#include "slip_monitor.h"  // 需要包含 slip_monitor.h 以使用速度平滑器
 
 // ============ 机械参数(两组底盘)定义 ============
 #define WHEEL_RADIUS_MM      37.5f    // 轮子半径 (mm)  37.5 
@@ -16,6 +16,8 @@
 #define a                    125      //半轴距 125  107
 #define b                    102      //半轮距 102  107
 #define REDUCE_RADIO         19       //减速比
+#define A_LINE               2000.0f  // 线加速度 mm/s²
+#define W_LINE               180.0f   // 角加速度 °/s²
 // 轮子周长 (mm)
 #define WHEEL_CIRCUMFERENCE  (2.0f * PI * WHEEL_RADIUS_MM)  // ≈ 235.5 mm
 

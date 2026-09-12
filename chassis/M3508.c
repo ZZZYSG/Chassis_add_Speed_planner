@@ -20,8 +20,8 @@ const PID_Param_t drive_param[4] = {
     {4, 0.5, 0, 16384, 5000, 3},   // 轮3
 };
 const PID_Param_t pos_param[3] = {
-    {1, 0.001, 0, 300, 20, 1.2},   // x:   首次测试限幅 500 mm/s（2000 起步太猛，调稳后再加大）
-    {1, 0.001, 0, 300, 20, 1.2},   // y:   同上
+    {3, 0.001, 0, 300, 20, 1.2},   // x:   首次测试限幅 500 mm/s（2000 起步太猛，调稳后再加大）
+    {3, 0.001, 0, 300, 20, 1.2},   // y:   同上
     {1.25, 0.025, 0, 75, 0.25, 0},   // yaw: 输出单位度/s，建议后续降到 60~120
 };
 
@@ -43,6 +43,12 @@ float tgt_unwrap   = 0.0f;   // 展开坐标系中的目标(锁存)
 static float last_yaw   = 0.0f;   // 上一拍的原始角度
 static uint8_t unwrap_ok = 0;     // 展开基准是否已建立
 static float lock_cmd   = 0.0f;   // 目标对应的指令值
+
+// 5. 梯形速度规划器的相关变量
+static float smooth_vx = 0, smooth_vy = 0, smooth_w = 0;   /* 文件级,方便 Stop 清零 */
+const float dt    = 0.001f;          /* TIM4 1kHz */
+const float a_max = A_LINE * dt;    /* 2.0 mm/s/拍 */
+const float w_max = W_LINE * dt;     /* 180°/s²,0.18°/s/拍 */
 
 /*================== 私有接口函数 =====================*/
 
@@ -183,12 +189,17 @@ void Chassis_Move_yaw(float yaw)
   */
 void Chassis_Speed_Control(float v_x, float v_y, float w_dps)
 {
+    smooth_vx = Velocity_Smoother(smooth_vx, v_x, a_max);
+    smooth_vy = Velocity_Smoother(smooth_vy, v_y, a_max);
+    smooth_w  = Velocity_Smoother(w_dps, smooth_w, w_max);
+
+ 
     float rot = MM_S_TO_RPM((w_dps * PI / 180.0f) * (a + b));  
     // 简单的全向移动解算示例---左为x正向，前为y正向，逆时针旋转为正方向
-    drive_motor_pid[0].target = MM_S_TO_RPM( v_x - v_y ) + rot; // 左前轮
-    drive_motor_pid[1].target = MM_S_TO_RPM( v_x + v_y ) + rot; // 右前轮
-    drive_motor_pid[2].target = MM_S_TO_RPM(-v_x - v_y ) + rot; // 左后轮
-    drive_motor_pid[3].target = MM_S_TO_RPM(-v_x + v_y ) + rot; // 右后轮
+    drive_motor_pid[0].target = MM_S_TO_RPM( smooth_vx - smooth_vy ) + rot; // 左前轮
+    drive_motor_pid[1].target = MM_S_TO_RPM( smooth_vx + smooth_vy ) + rot; // 右前轮
+    drive_motor_pid[2].target = MM_S_TO_RPM(-smooth_vx - smooth_vy ) + rot; // 左后轮
+    drive_motor_pid[3].target = MM_S_TO_RPM(-smooth_vx + smooth_vy ) + rot; // 右后轮
 
     // 计算PID输出并发送
      drive_motor_pid[0].f_cal_pid(&drive_motor_pid[0], motor_data[0]->speed_rpm);
