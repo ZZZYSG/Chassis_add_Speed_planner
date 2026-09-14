@@ -6,7 +6,7 @@
 extern float pos_hold_yaw;
 extern uint8_t route_step_mark;
 extern uint8_t task_step_mark;
-static Navigation_t nav;
+Navigation_t nav;
 /* ==================== 3×3 拓扑节点 -> 世界坐标 (mm) ====================
  * 表编号 1~9 = 代码索引 0~8(排序规则: 先比 Y 小, 再比 X 小):
  *   编号 |  X   |  Y  | (X, Y)
@@ -43,17 +43,18 @@ static void Nav_LoadSegment(void)
     float cos_y = cosf(yaw_rad);
     float sin_y = sinf(yaw_rad);
 
-    nav.seg_tx =  ex * cos_y + ey * sin_y;   /* R(-yaw)·(ex,ey) */
-    nav.seg_ty = -ex * sin_y + ey * cos_y;
+    /* R(-yaw)·(ex,ey), yaw 正 = 右转(顺时针), 与 odometer.c 约定一致 */
+    nav.seg_tx =  ex * cos_y - ey * sin_y;
+    nav.seg_ty =  ex * sin_y + ey * cos_y;
 
-    if(-45 < final_yaw && final_yaw < 45) 
-    { nav.correct_yaw = 0;  } 
-    else if(45 < final_yaw && final_yaw < 135)
-    { nav.correct_yaw = 90; }
-    else if(final_yaw < -135 || final_yaw > 135)
-    { nav.correct_yaw = 180; }
-    else if(final_yaw > -135 && final_yaw < -45)
-    { nav.correct_yaw = -90; }
+    /* 标定旋转方向 */
+    int8_t dy = (int8_t)(nav.wp[nav.cur+1].idx / 3) - (int8_t)(nav.wp[nav.cur].idx / 3);
+    int8_t dx = (int8_t)(nav.wp[nav.cur+1].idx % 3) - (int8_t)(nav.wp[nav.cur].idx % 3);
+    if      (dy > 0)  nav.correct_yaw = 0.0f;    /* 朝 +Y */
+    else if (dy < 0)  nav.correct_yaw = 180.0f;  /* 朝 -Y */
+    else if (dx > 0)  nav.correct_yaw = 90.0f;   /* 朝 +X (符号实车验证) */
+    else              nav.correct_yaw = -90.0f;  /* 朝 -X */
+    nav.turning = 1;
 
     /* 航向目标换算到展开坐标系(与底层 yaw 环的测量 unwrap_yaw 对齐) */
     Chassis_UpdateUnwrap();                    // 先刷新当前展开角
@@ -162,24 +163,47 @@ uint8_t Nav_Start(uint8_t start, uint8_t goal)
 /* 每个控制周期调用一次,内部直接读里程计 odometer 和 IMU 的 yaw_final */
 void Nav_Update(void)
 {
-    if (!nav.running) return;                               //还没有导航信息
+    if (!nav.running) return;   //还没有导航信息
+                            
     if (nav.cur >= nav.count - 1) { Nav_Stop(); return; }   //导航完了
+        float ex = nav.wp[nav.cur + 1].x_mm - odometer.x;
+        float ey = nav.wp[nav.cur + 1].y_mm - odometer.y;
+    //平移段
+    if (!nav.turning){
+        /* 1. 当前位置 -> 目标航点 的场地系误差(闭环核心) */
+        float dist = sqrtf(ex * ex + ey * ey);
 
-    /* 1. 当前位置 -> 目标航点 的场地系误差(闭环核心) */
-    float ex = nav.wp[nav.cur + 1].x_mm - odometer.x;
-    float ey = nav.wp[nav.cur + 1].y_mm - odometer.y;
-    float dist = sqrtf(ex * ex + ey * ey);
-
-    /* 2. 到达判定: 进入半径换下一段; 末段进圈即停车 */
-    if (dist < ARRIVE_RADIUS) {
-        nav.cur++;
-        if (nav.cur >= nav.count - 1) { Nav_Stop(); return; }  /* 到终点,停车 */
-        Nav_LoadSegment();                   /* 换段: 更新固定目标 + 清段里程 */
-    }
+        /* 2. 到达判定: 进入半径换下一段; 末段进圈即停车 */
+        if (dist < ARRIVE_RADIUS) {
+            nav.cur++;
+            if (nav.cur >= nav.count - 1) { Nav_Stop(); return; }  /* 到终点,停车 */
+            Nav_LoadSegment();                   /* 换段: 更新固定目标 + 清段里程 */
+            return;   /* 换段拍直接结束: 下一拍 ex/ey 才是新段误差,
+                         否则本拍用旧航点误差(≈0)重算会把新段目标覆盖成 0 */
+        }
 
     /* 3. 每周期用同一个段目标调位置环(measure = odometer.body_odom_x/y),
           航向锁定 pos_hold_yaw(已换算到展开系),内部含 IMU 纠偏 */
-    Chassis_Position_Control(nav.seg_tx, nav.seg_ty, pos_hold_yaw);   
+    Chassis_Position_Control(nav.seg_tx, nav.seg_ty, pos_hold_yaw);  
+    }
+
+    /* 转向段: 每拍直接驱动 yaw 环, 原地转, 不发送平动 */
+    if (nav.turning) {
+
+        if (fabsf(unwrap_yaw - pos_hold_yaw) < 1.0f) {     /* 转到位(3°容差) */
+            nav.turning = 0;
+            /* 用转向后的新航向, 把场地系误差换算成车体系目标(yaw 正 = 右转) */
+            float yr = final_yaw * PI / 180.0f;
+            nav.seg_tx =  ex * cosf(yr) - ey * sinf(yr);
+            nav.seg_ty =  ex * sinf(yr) + ey * cosf(yr);
+            Odometer_ResetSegment();   /* 清掉转向期间滑移混入的里程, 让平移段从0计 */
+            pos_motor_pid[0].iout = 0.0f;   /* 清平动积分 */
+            pos_motor_pid[1].iout = 0.0f;
+           }
+    Chassis_Position_Control(odometer.body_odom_x, odometer.body_odom_y, pos_hold_yaw);
+    }
+
+ 
 }
 
 void Nav_Stop(void)

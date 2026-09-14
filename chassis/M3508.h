@@ -11,13 +11,12 @@
 #include "slip_monitor.h"  // 需要包含 slip_monitor.h 以使用速度平滑器
 
 // ============ 机械参数(两组底盘)定义 ============
-#define WHEEL_RADIUS_MM      37.5f    // 轮子半径 (mm)  37.5 
+#define WHEEL_RADIUS_MM      36.9f    // 轮子半径 (mm)  37.5 
 #define PI                   3.1415926f
 #define a                    125      //半轴距 125  107
 #define b                    102      //半轮距 102  107
 #define REDUCE_RADIO         19       //减速比
-#define A_LINE               2000.0f  // 线加速度 mm/s²
-#define W_LINE               180.0f   // 角加速度 °/s²
+
 // 轮子周长 (mm)
 #define WHEEL_CIRCUMFERENCE  (2.0f * PI * WHEEL_RADIUS_MM)  // ≈ 235.5 mm
 
@@ -34,6 +33,7 @@ extern PID_TypeDef pos_motor_pid[3];          // 位置环 PID (x / y / yaw)
 extern Odometer odometer;
 extern float unwrap_yaw;                      // yaw 角度展开后的连续值（调试观察）
 extern float tgt_unwrap;                      // 展开坐标系中的 yaw 目标（调试观察）
+extern float smooth_vx, smooth_vy, smooth_w;  // 平滑后速度(mm/s,°/s)（调试观察）
 
 
 /* ==================== 函数声明 ==================== */

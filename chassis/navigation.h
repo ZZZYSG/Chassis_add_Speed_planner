@@ -30,11 +30,14 @@ typedef struct {
     Waypoint_t wp[MAX_WAYPOINTS]; /* 节点信息 */
     uint8_t    count;             /* 航点总数 */
     uint8_t    cur;               /* 当前航点下标(目标 = count -1)用于判断是否结束 */
-    uint8_t    running;           
+    uint8_t    running;
+    uint8_t    turning;           
     float      seg_tx, seg_ty;    /* 本段固定目标(段起点车体系, mm) */
     float      correct_yaw;
 
 } Navigation_t;
+
+extern Navigation_t nav;                     /* 导航状态(调试观察) */
 
 /* ==================== 对外接口 ==================== */
 void    Nav_Init(void);                          

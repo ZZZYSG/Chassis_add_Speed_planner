@@ -3,7 +3,7 @@
 
 
 
-//ÊäÈëµÄÊý¾Ý±£Ö¤ÔÚÕýÈ·µÄ·¶Î§ÄÚ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý±ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½È·ï¿½Ä·ï¿½Î§ï¿½ï¿½
 
 #define LimitMax(input, max)   \
     {                          \
@@ -29,7 +29,7 @@
   */
 	
 
-/*²ÎÊý³õÊ¼»¯-----------------------------*/
+/*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½-----------------------------*/
 static void pid_param_init(
 	PID_TypeDef * pid, 
 	uint16_t  maxout,
@@ -47,13 +47,13 @@ static void pid_param_init(
 	pid->ki = ki;
 	pid->kd = kd;		
 	pid->DeadBand = deadband;
-	pid->target = target;         //Ä¿±êÖµ
+	pid->target = target;         //Ä¿ï¿½ï¿½Öµ
 	pid->output = 0;
 }
 
 /*--------------------------------------------------------------
 
- ÖÐÍ¾¸ü¸Ä²ÎÊýÉè¶¨
+ ï¿½ï¿½Í¾ï¿½ï¿½ï¿½Ä²ï¿½ï¿½ï¿½ï¿½è¶¨
 
 */
 static void pid_reset(PID_TypeDef * pid, float kp, float ki, float kd)
@@ -63,33 +63,41 @@ static void pid_reset(PID_TypeDef * pid, float kp, float ki, float kd)
 	pid->kd = kd;
 }
 
-/*pid¼ÆËã-----------------------------------------------------------------------*/	
+/*pidï¿½ï¿½ï¿½ï¿½-----------------------------------------------------------------------*/	
 static float pid_calculate(PID_TypeDef* pid, float measure)
 {
-	//  Êý¾ÝµÄ¸üÐÂ
-	pid->measure = measure;          //²âÁ¿ÖµµÈÓÚ±¾´Î×îÐÂ²âÁ¿Öµ
-	pid->last_err  = pid->err;       //ÉÏ´ÎÎó²îµÈÓÚ±¾´Î×îÐÂÎó²î
-	pid->last_output = pid->output;  //ÉÏ´ÎÊä³öµÈÓÚ±¾´Î×îÐÂÊä³ö
+	//  ï¿½ï¿½ï¿½ÝµÄ¸ï¿½ï¿½ï¿½
+	pid->measure = measure;          //ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½Ú±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â²ï¿½ï¿½ï¿½Öµ
+	pid->last_err  = pid->err;       //ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	pid->last_output = pid->output;  //ï¿½Ï´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	
-	pid->err = pid->target - pid->measure;  //Îó²îÖµ = Ä¿±êÖµ - ²âÁ¿Öµ
+	pid->err = pid->target - pid->measure;  //ï¿½ï¿½ï¿½Öµ = Ä¿ï¿½ï¿½Öµ - ï¿½ï¿½ï¿½ï¿½Öµ
 	
-	//ÊÇ·ñ½øÈëËÀÇø
-	if((fabsf(pid->err) > pid->DeadBand))   //Îó²î´óÓÚËÀÇø
+	//ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	 if(fabsf(pid->err) <= pid->DeadBand)  /* deadband: zero output and freeze */
+	 {
+	 		pid->pout   = 0.0f;
+	 		pid->iout   = 0.0f;
+	 		pid->dout   = 0.0f;
+	 		pid->output = 0.0f;
+	 		return pid->output;
+	 }
+	if((fabsf(pid->err) > pid->DeadBand))   //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	{
-			pid->pout = pid->kp * pid->err;      //pÊä³öÎªKp*Îó²î
-			pid->iout += (pid->ki * pid->err);   //iÊä³öÎªi+ki*Îó²î
-			pid->dout =  pid->kd * (pid->err - pid->last_err);  //dÊä³öÎªkd*£¨Îó²î-ÉÏ´ÎÎó²î£©
+			pid->pout = pid->kp * pid->err;      //pï¿½ï¿½ï¿½ÎªKp*ï¿½ï¿½ï¿½
+			pid->iout += (pid->ki * pid->err);   //iï¿½ï¿½ï¿½Îªi+ki*ï¿½ï¿½ï¿½
+			pid->dout =  pid->kd * (pid->err - pid->last_err);  //dï¿½ï¿½ï¿½Îªkd*ï¿½ï¿½ï¿½ï¿½ï¿½-ï¿½Ï´ï¿½ï¿½ï¿½î£©
 			
-			//»ý·ÖÊÇ·ñ³¬³öÏÞÖÆ
+			//ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ñ³¬³ï¿½ï¿½ï¿½ï¿½ï¿½
 			if(pid->iout > pid->IntegralLimit)
 				   pid->iout = pid->IntegralLimit;       
 			if(pid->iout < - pid->IntegralLimit)
 				   pid->iout = - pid->IntegralLimit;
 			
-			//pidÊä³öºÍ
+			//pidï¿½ï¿½ï¿½ï¿½ï¿½
 			pid->output = pid->pout + pid->iout + pid->dout;   	
 
-			//pid->output = pid->output*0.7f + pid->last_output*0.3f;  //ÂË²¨£¿
+			//pid->output = pid->output*0.7f + pid->last_output*0.3f;  //ï¿½Ë²ï¿½ï¿½ï¿½
 			if(pid->output>pid->MaxOutput)         
 			{
 				   pid->output = pid->MaxOutput;

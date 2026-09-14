@@ -7,7 +7,7 @@ extern CAN_HandleTypeDef hcan2;
 
 void can_filter_init(void)
 {
-    CAN_FilterTypeDef can_filter_st;
+    CAN_FilterTypeDef can_filter_st = {0};
     can_filter_st.FilterActivation = ENABLE;
     can_filter_st.FilterMode = CAN_FILTERMODE_IDMASK;
     can_filter_st.FilterScale = CAN_FILTERSCALE_32BIT;
@@ -17,6 +17,7 @@ void can_filter_init(void)
     can_filter_st.FilterMaskIdLow = 0x0000;
     // STM32F407: 28 个过滤器由 CAN1/CAN2 共享，CAN1 用 0~13，CAN2 只能用 14~27！
     can_filter_st.FilterBank = 14;
+    can_filter_st.SlaveStartFilterBank = 14;   /* 必填: HAL 用该字段写 CAN2SB，漏掉就是栈垃圾值 */
     can_filter_st.FilterFIFOAssignment = CAN_RX_FIFO0;
     HAL_CAN_ConfigFilter(&hcan2, &can_filter_st);
     HAL_CAN_Start(&hcan2);

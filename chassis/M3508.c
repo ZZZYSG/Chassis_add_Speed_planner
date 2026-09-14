@@ -189,12 +189,13 @@ void Chassis_Move_yaw(float yaw)
   */
 void Chassis_Speed_Control(float v_x, float v_y, float w_dps)
 {
-    smooth_vx = Velocity_Smoother(smooth_vx, v_x, a_max);
-    smooth_vy = Velocity_Smoother(smooth_vy, v_y, a_max);
-    smooth_w  = Velocity_Smoother(w_dps, smooth_w, w_max);
+    /* 注意参数顺序:Velocity_Smoother_Asym(目标, 当前, 每拍最大增量) */
+    smooth_vx = Velocity_Smoother_Asym(v_x, smooth_vx, a_max);
+    smooth_vy = Velocity_Smoother_Asym(v_y, smooth_vy, a_max);
+    smooth_w  = Velocity_Smoother_Asym(w_dps, smooth_w, w_max);
 
  
-    float rot = MM_S_TO_RPM((w_dps * PI / 180.0f) * (a + b));  
+    float rot = MM_S_TO_RPM((smooth_w * PI / 180.0f) * (a + b));  
     // 简单的全向移动解算示例---左为x正向，前为y正向，逆时针旋转为正方向
     drive_motor_pid[0].target = MM_S_TO_RPM( smooth_vx - smooth_vy ) + rot; // 左前轮
     drive_motor_pid[1].target = MM_S_TO_RPM( smooth_vx + smooth_vy ) + rot; // 右前轮

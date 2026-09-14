@@ -7,8 +7,8 @@
 
 /* M3508 + 19:1 减速箱: 编码器在电机轴上, 8192 计数 = 电机 1 圈 = 车轮 1/19 圈
  * 每计数对应车轮位移(mm) = 轮周长 / 8192 / 减速比 */
-#define WHEEL_RADIUS_MM     37.5f
-#define WHEEL_CIRCUMFERENCE (2.0f * PI * WHEEL_RADIUS_MM)                          /* ≈ 235.62 mm */
+#define WHEEL_RADIUS_MM     36.9f   /* 实测标定: 37.5×0.9833≈36.9(按600/2400mm两组实测拟合) */
+#define WHEEL_CIRCUMFERENCE (2.0f * PI * WHEEL_RADIUS_MM)                          /* ≈ 231.9 mm */
 #define REDUCTION_RATIO     19.0f                                                  /* 与 M3508.h 的 REDUCE_RADIO 一致 */
 #define MM_PER_ECD          (WHEEL_CIRCUMFERENCE / 8192.0f / REDUCTION_RATIO)      /* ≈ 0.00153 mm/计数 */
 
@@ -76,9 +76,10 @@ void Odometer_Update(void)
     /* 3. 场地系航向角(度 -> 弧度) */
     odometer.theta = final_yaw * PI / 180.0f;
 
-    /* 4. 车体系 -> 场地系旋转并累加位置 */
+    /* 4. 车体系 -> 场地系旋转并累加位置
+       yaw 正方向 = 右转(顺时针), 与 JY60 实测一致(实车 x 段验证) */
     float cos_t = cosf(odometer.theta);
     float sin_t = sinf(odometer.theta);
-    odometer.x += body_dx * cos_t - body_dy * sin_t;
-    odometer.y += body_dx * sin_t + body_dy * cos_t; 
+    odometer.x += body_dx * cos_t + body_dy * sin_t;
+    odometer.y += -body_dx * sin_t + body_dy * cos_t; 
 }
